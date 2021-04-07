@@ -1,5 +1,9 @@
-from time import localtime
-import datetime
+'''
+- implement config part, so alter the user data a bit
+'''
+
+from datetime import datetime
+from pytz import timezone
 
 
 class Tree:
@@ -9,8 +13,11 @@ class Tree:
 		self.right = right
 
 class TimeObject:
+	deftz = timezone("America/Los_Angeles")
+
 	def __init__(self, year=None, month=None, day=None, hour=None, minute=None):
-		self.values = {'year': localtime().tm_year if year == None else year, 'month': localtime().tm_mon if month == None else month, 'day': localtime().tm_mday if day == None else day, 'hour': localtime().tm_hour if hour == None else hour, 'minute': localtime().tm_min if minute == None else minute}
+		curtime = datetime.now(this.deftz)
+		self.values = {'year': curtime.year if year == None else year, 'month': curtime.month if month == None else month, 'day': curtime.day if day == None else day, 'hour': curtime.hour if hour == None else hour, 'minute': curtime.minute if minute == None else minute}
 
 	def __getattr__(self, attribute):
 		return self.values[attribute]
@@ -24,11 +31,11 @@ class TimeObject:
 		return 0
 
 	def __sub__(self, other):
-		diff = datetime.datetime(self.year, self.month, self.day, self.hour, self.minute) - datetime.datetime(other.year, other.month, other.day, other.hour, other.minute)
+		diff = datetime(self.year, self.month, self.day, self.hour, self.minute) - datetime(other.year, other.month, other.day, other.hour, other.minute)
 		return int(diff.total_seconds() // 60)
 
 	def __rsub__(self, other):
-		diff = datetime.datetime(other.year, other.month, other.day, other.hour, other.minute) - datetime.datetime(self.year, self.month, self.day, self.hour, self.minute)
+		diff = datetime(other.year, other.month, other.day, other.hour, other.minute) - datetime(self.year, self.month, self.day, self.hour, self.minute)
 		return int(diff.total_seconds() // 60)
 
 	def __eq__(self, other):
@@ -76,14 +83,27 @@ class User:
 	def __init__(self, user_id, user_data={}):
 		self.id = user_id
 		self.time_tree = self.make_tree(user_data)
-		self.notif_times = [60,30,5,1] #can be modified by the user so they are reminded more/less often.
+		self.config = {}
 		self.reminders = []
 		self.parse_data(user_data)
+		self.set_default_config()
 
 	def parse_data(self, user_data):
-		for k,v in user_data.items():
-			time_args = [int(n) for n in v.split('-')]
-			self.reminders.append(Reminder(k, TimeObject(time_args[0],time_args[1],time_args[2],time_args[3],time_args[4])))
+		if 'config' in user_data:
+			for k,v in user_data['config'].items():
+				self.config[k] = v
+		if 'reminders' in user_data:
+			for k,v in user_data['reminders'].items():
+				time_args = [int(n) for n in v.split('-')]
+				self.reminders.append(Reminder(k, TimeObject(time_args[0],time_args[1],time_args[2],time_args[3],time_args[4])))
+
+	def set_default_config(self):
+		if 'notif_times' not in self.config:
+			self.config['notif_times'] = [60,30,5,1]
+		if 'timemode_24hr' not in self.config:
+			self.config['timemode_24hr'] = True
+		if 'timezone' not in self.config:
+			self.config['timezone'] = 'PST'
 
 	def make_tree(self, user_data):
 		return None
@@ -100,8 +120,31 @@ class User:
 	def remove_reminder(self, reminder):
 		self.reminders.remove(reminder)
 
+	def remove_reminder_by_name(self, reminder_name):
+		for reminder in self.reminders:
+			if reminder.name == reminder_name:
+				self.remove_reminder(reminder)
+				return True
+		return False
+
+	def add_notif_time(self, minutes):
+		if minutes not in self.config['notif_times']:
+			self.config['notif_times'].append(minutes)
+			self.config['notif_times'].sort(key=lambda x: -x)
+			return True
+		return False
+
+	def remove_notif_time(self, minutes):
+		if minutes in self.config['notif_times']:
+			self.config['notif_times'].remove(minutes)
+			return True
+		return False
+
+	def swap_timemode(self):
+		self.config['timemode_24hr'] = not self.config['timemode_24hr']
+
 	def get_dict(self):
-		return {r.name: str(r.time) for r in self.reminders}
+		return {'config': self.config, 'reminders': {r.name: str(r.time) for r in self.reminders}}
 
 	def __str__(self):
 		return str(self.id) + " -- " + str(self.get_dict())
