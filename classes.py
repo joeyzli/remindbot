@@ -16,7 +16,7 @@ class TimeObject:
 	deftz = timezone("America/Los_Angeles")
 
 	def __init__(self, year=None, month=None, day=None, hour=None, minute=None):
-		curtime = datetime.now(this.deftz)
+		curtime = datetime.now(self.deftz)
 		self.values = {'year': curtime.year if year == None else year, 'month': curtime.month if month == None else month, 'day': curtime.day if day == None else day, 'hour': curtime.hour if hour == None else hour, 'minute': curtime.minute if minute == None else minute}
 
 	def __getattr__(self, attribute):
